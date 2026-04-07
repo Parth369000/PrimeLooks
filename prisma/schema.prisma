@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id            Int           @id @default(autoincrement())
+  name          String
+  slug          String        @unique
+  products      Product[]
+  subCategories SubCategory[]
+}
+
+model SubCategory {
+  id          Int        @id @default(autoincrement())
+  categoryId  Int
+  name        String
+  slug        String     @unique
+  category    Category   @relation(fields: [categoryId], references: [id])
+  products    Product[]
+}
+
+model Product {
+  id            Int             @id @default(autoincrement())
+  categoryId    Int
+  subCategoryId Int?
+  name          String
+  description   String          @db.Text
+  actualPrice   Float
+  sellingPrice  Float
+  stock         Int             @default(0)
+  isVisible     Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  category      Category        @relation(fields: [categoryId], references: [id])
+  subCategory   SubCategory?    @relation(fields: [subCategoryId], references: [id])
+  images        ProductImage[]
+  orderItems    OrderItem[]
+  wishlists     Wishlist[]
+}
+
+model ProductImage {
+  id          Int      @id @default(autoincrement())
+  productId   Int
+  url         String
+  isPrimary   Boolean  @default(false)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Coupon {
+  id             Int      @id @default(autoincrement())
+  code           String   @unique
+  discountType   String   // "PERCENTAGE" or "FIXED"
+  discountValue  Float
+  minCartValue   Float    @default(0)
+  maxDiscountCap Float?
+  usageLimit     Int      @default(0) // 0 means unlimited
+  timesUsed      Int      @default(0)
+  expiryDate     DateTime?
+  isActive       Boolean  @default(true)
+  orders         Order[]
+}
+
+model Order {
+  id               Int         @id @default(autoincrement())
+  customerName     String
+  customerPhone    String
+  customerAddress  String      @db.Text
+  totalAmount      Float
+  discountAmount   Float       @default(0)
+  couponId         Int?
+  orderStatus      String      @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  
+  coupon           Coupon?     @relation(fields: [couponId], references: [id])
+  items            OrderItem[]
+}
+
+model OrderItem {
+  id            Int      @id @default(autoincrement())
+  orderId       Int
+  productId     Int
+  quantity      Int      @default(1)
+  priceAtTime   Float
+  
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product       Product  @relation(fields: [productId], references: [id])
+}
+
+model Wishlist {
+  id          Int      @id @default(autoincrement())
+  userSession String   // Identifier for guest users
+  productId   Int
+  createdAt   DateTime @default(now())
+  
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userSession, productId])
+}
+
+model Setting {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String   // Hashed password
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

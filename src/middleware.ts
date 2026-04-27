@@ -28,36 +28,44 @@ export async function middleware(request: NextRequest) {
   // Remove port for local dev
   hostname = hostname.replace(/:\d+$/, '');
 
+  // Check if it's a native master route
+  const isMasterRoute = url.pathname.startsWith('/master');
+
   // Master Admin Domain (e.g. app.localhost)
-  const isMaster = hostname === 'app.localhost';
+  const isMasterDomain = hostname === 'app.localhost';
 
   const searchParams = url.searchParams.toString();
-  const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ''}`;
+  const path = `${url.pathname}${searchParams.length > 0 ? \`?\${searchParams}\` : ''}`;
 
   // 1. Check Auth for Admin routes (both Master and Store Admins)
-  if (url.pathname.startsWith('/admin') || (isMaster && !url.pathname.startsWith('/login'))) {
+  if (url.pathname.startsWith('/admin') || isMasterRoute || (isMasterDomain && !url.pathname.startsWith('/login'))) {
     // Skip checking on the login page itself
-    if (url.pathname !== '/admin/login' && url.pathname !== '/login') {
+    if (url.pathname !== '/admin/login' && url.pathname !== '/master/login' && url.pathname !== '/login') {
       const sessionCookie = request.cookies.get('admin_session')?.value;
       if (!sessionCookie) {
         // Redirect to appropriate login
-        return NextResponse.redirect(new URL(isMaster ? '/login' : '/admin/login', request.url));
+        return NextResponse.redirect(new URL((isMasterRoute || isMasterDomain) ? '/master/login' : '/admin/login', request.url));
       }
       try {
         await jwtVerify(sessionCookie, key, { algorithms: ['HS256'] });
       } catch (e) {
-        const response = NextResponse.redirect(new URL(isMaster ? '/login' : '/admin/login', request.url));
+        const response = NextResponse.redirect(new URL((isMasterRoute || isMasterDomain) ? '/master/login' : '/admin/login', request.url));
         response.cookies.delete('admin_session');
         return response;
       }
     }
   }
 
-  // 2. Rewrite routing based on hostname
-  if (isMaster) {
+  // 2. Allow direct access to /master routes from any domain
+  if (isMasterRoute) {
+    return NextResponse.next();
+  }
+
+  // 3. Rewrite routing based on hostname
+  if (isMasterDomain) {
     return NextResponse.rewrite(new URL(`/master${path}`, request.url));
   }
 
-  // 3. For store domains
+  // 4. For store domains
   return NextResponse.rewrite(new URL(`/${hostname}${path}`, request.url));
 }

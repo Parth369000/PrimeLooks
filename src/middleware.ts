@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
   const isMasterDomain = hostname === 'app.localhost';
 
   const searchParams = url.searchParams.toString();
-  const path = `${url.pathname}${searchParams.length > 0 ? \`?\${searchParams}\` : ''}`;
+  const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ''}`;
 
   // 1. Check Auth for Admin routes (both Master and Store Admins)
   if (url.pathname.startsWith('/admin') || isMasterRoute || (isMasterDomain && !url.pathname.startsWith('/login'))) {

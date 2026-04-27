@@ -9,9 +9,10 @@ import { Button } from '@/components/uitoolkit/Button';
 
 interface CheckoutFormProps {
   whatsappNumber: string;
+  domain: string;
 }
 
-export const CheckoutForm = ({ whatsappNumber }: CheckoutFormProps) => {
+export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
   const { items, subtotal, totalSavings, clearCart } = useCart();
   const { showToast } = useToast();
   const [name, setName] = useState('');
@@ -64,6 +65,7 @@ export const CheckoutForm = ({ whatsappNumber }: CheckoutFormProps) => {
         customerAddress: address,
         totalAmount: finalTotal,
         discountAmount: 0,
+        domain,
         items: items.map(i => ({
           productId: i.id,
           quantity: i.quantity,

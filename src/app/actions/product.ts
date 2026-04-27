@@ -22,8 +22,12 @@ export async function createProduct(formData: FormData) {
     throw new Error('Missing required fields');
   }
 
+  const user = await prisma.user.findUnique({ where: { id: session.adminId } });
+  if (!user || !user.storeId) throw new Error('User has no store assigned');
+
   const product = await prisma.product.create({
     data: {
+      storeId: user.storeId,
       name,
       description,
       actualPrice,

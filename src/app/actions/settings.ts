@@ -15,10 +15,13 @@ export async function updateSetting(formData: FormData) {
     throw new Error('Key and value are required');
   }
 
+  const user = await prisma.user.findUnique({ where: { id: session.adminId } });
+  if (!user || !user.storeId) throw new Error('User has no store assigned');
+
   await prisma.setting.upsert({
-    where: { key },
+    where: { storeId_key: { storeId: user.storeId, key } },
     update: { value },
-    create: { key, value },
+    create: { key, value, storeId: user.storeId },
   });
 
   revalidatePath('/admin/settings');

@@ -4,8 +4,15 @@ import { CheckoutForm } from '@/components/cart/CheckoutForm';
 
 export const dynamic = 'force-dynamic';
 
-export default async function CheckoutPage() {
-  const whatsappSetting = await prisma.setting.findUnique({ where: { key: 'whatsapp_number' } });
+export default async function CheckoutPage({ params }: { params: Promise<{ domain: string }> }) {
+  const { domain } = await params;
+  
+  const whatsappSetting = await prisma.setting.findFirst({ 
+    where: { 
+      key: 'whatsapp_number',
+      store: { domain: decodeURIComponent(domain) }
+    } 
+  });
   const whatsappNumber = whatsappSetting?.value || '';
 
   return (
@@ -16,7 +23,7 @@ export default async function CheckoutPage() {
           <p className="text-sm mt-2 text-amber-600">Please ask the admin to set a WhatsApp number in Settings.</p>
         </div>
       ) : (
-        <CheckoutForm whatsappNumber={whatsappNumber} />
+        <CheckoutForm whatsappNumber={whatsappNumber} domain={domain} />
       )}
     </div>
   );

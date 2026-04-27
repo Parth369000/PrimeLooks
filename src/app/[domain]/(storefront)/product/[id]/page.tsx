@@ -9,8 +9,8 @@ import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function ProductDetailPage({ params }: { params: Promise<{ domain: string, id: string }> }) {
+  const { domain, id } = await params;
   const productId = parseInt(id, 10);
 
   if (isNaN(productId)) return notFound();
@@ -26,7 +26,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const savings = product.actualPrice - product.sellingPrice;
 
   // Fetch WhatsApp number from settings
-  const whatsappSetting = await prisma.setting.findUnique({ where: { key: 'whatsapp_number' } });
+  const whatsappSetting = await prisma.setting.findFirst({ 
+    where: { 
+      key: 'whatsapp_number',
+      store: { domain: decodeURIComponent(domain) }
+    } 
+  });
   const whatsappNumber = whatsappSetting?.value || '';
 
   // Related products from same category

@@ -17,10 +17,14 @@ export async function createCategory(formData: FormData) {
   // Basic slugification
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
+  const user = await prisma.user.findUnique({ where: { id: session.adminId } });
+  if (!user || !user.storeId) throw new Error('User has no store assigned');
+
   await prisma.category.create({
     data: {
       name,
       slug,
+      storeId: user.storeId,
     },
   });
 

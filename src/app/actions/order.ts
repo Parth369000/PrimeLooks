@@ -36,8 +36,12 @@ export async function createOrder(data: {
   totalAmount: number;
   discountAmount: number;
   couponId?: number;
+  domain: string;
   items: { productId: number; quantity: number; priceAtTime: number }[];
 }) {
+  const store = await prisma.store.findUnique({ where: { domain: decodeURIComponent(data.domain) } });
+  if (!store) throw new Error('Store not found');
+
   const result = await prisma.$transaction(async (tx) => {
     // 1. Create the order
     const order = await tx.order.create({
@@ -47,7 +51,8 @@ export async function createOrder(data: {
         customerAddress: data.customerAddress,
         totalAmount: data.totalAmount,
         discountAmount: data.discountAmount,
-        couponId: data.couponId,
+        couponId: data.couponId || null,
+        storeId: store.id,
         items: {
           create: data.items.map((item) => ({
             productId: item.productId,

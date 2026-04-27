@@ -12,6 +12,9 @@ export async function uploadHeroImages(formData: FormData) {
   const validGallery = galleryImages.filter(url => url && url.trim() !== '');
 
   if (validGallery.length > 0) {
+    const user = await prisma.user.findUnique({ where: { id: session.adminId } });
+    if (!user || !user.storeId) throw new Error('User has no store assigned');
+
     const maxOrderRes = await prisma.heroSliderImage.aggregate({
       _max: { order: true }
     });
@@ -20,7 +23,8 @@ export async function uploadHeroImages(formData: FormData) {
     await prisma.heroSliderImage.createMany({
       data: validGallery.map(url => ({
         url,
-        order: currentOrder++
+        order: currentOrder++,
+        storeId: user.storeId!
       }))
     });
   }

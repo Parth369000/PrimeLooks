@@ -6,11 +6,14 @@ import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export default async function CategoryPage({ params }: { params: Promise<{ domain: string, slug: string }> }) {
+  const { domain, slug } = await params;
 
-  const category = await prisma.category.findUnique({
-    where: { slug },
+  const category = await prisma.category.findFirst({
+    where: { 
+      slug,
+      store: { domain: decodeURIComponent(domain) }
+    },
   });
 
   if (!category) return notFound();

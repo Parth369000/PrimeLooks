@@ -20,6 +20,9 @@ export async function createCoupon(formData: FormData) {
     throw new Error('Missing required fields');
   }
 
+  const user = await prisma.user.findUnique({ where: { id: session.adminId } });
+  if (!user || !user.storeId) throw new Error('User has no store assigned');
+
   await prisma.coupon.create({
     data: {
       code,
@@ -30,6 +33,7 @@ export async function createCoupon(formData: FormData) {
       usageLimit,
       expiryDate,
       isActive: true,
+      storeId: user.storeId,
     },
   });
 
@@ -57,7 +61,8 @@ export async function deleteCoupon(id: number) {
 }
 
 export async function validateCoupon(code: string, cartTotal: number) {
-  const coupon = await prisma.coupon.findUnique({
+  // In a real multi-tenant app we would pass the storeId or domain. For now findFirst by code.
+  const coupon = await prisma.coupon.findFirst({
     where: { code: code.toUpperCase().trim() },
   });
 

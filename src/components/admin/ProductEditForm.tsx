@@ -19,6 +19,7 @@ interface ProductEditFormProps {
     actualPrice: number;
     sellingPrice: number;
     stock: number;
+    isTrending: boolean;
     categoryId: number;
     images: { id: number; url: string; isPrimary: boolean }[];
   };
@@ -69,6 +70,19 @@ export const ProductEditForm = ({ product, categories, action }: ProductEditForm
       </div>
 
       <Input type="number" name="stock" label="Stock Quantity" defaultValue={product.stock} required />
+
+      <div className="flex items-center gap-2 mt-2 bg-amber-50 p-3 rounded-xl border border-amber-100">
+        <input 
+          type="checkbox" 
+          id="isTrending" 
+          name="isTrending" 
+          defaultChecked={product.isTrending}
+          className="w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500 cursor-pointer"
+        />
+        <label htmlFor="isTrending" className="text-sm font-bold text-amber-900 select-none cursor-pointer">
+          🔥 Mark as Trending (Show on Homescreen)
+        </label>
+      </div>
 
       {/* Thumbnail Upload */}
       <ImageUploader

@@ -4,41 +4,60 @@ import { jwtVerify } from 'jose';
 const secretKey = process.env.JWT_SECRET || 'prime_looks_secret_development_key';
 const key = new TextEncoder().encode(secretKey);
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // 1. Skip middleware for static assets, public routes, and the admin login page
-  if (
-    pathname.startsWith('/_next') || 
-    pathname.startsWith('/api') || 
-    pathname.startsWith('/admin/login') ||
-    !pathname.startsWith('/admin')
-  ) {
-    return NextResponse.next();
-  }
-
-  // 2. Check for admin session
-  const sessionCookie = request.cookies.get('admin_session')?.value;
-
-  if (!sessionCookie) {
-    return NextResponse.redirect(new URL('/admin/login', request.url));
-  }
-
-  try {
-    // We verify JWT manually here because importing from @/lib/auth may 
-    // trigger issues in edge runtime if not handled carefully.
-    await jwtVerify(sessionCookie, key, {
-      algorithms: ['HS256'],
-    });
-    return NextResponse.next();
-  } catch (e) {
-    // Session invalid or expired
-    const response = NextResponse.redirect(new URL('/admin/login', request.url));
-    response.cookies.delete('admin_session');
-    return response;
-  }
-}
-
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 };
+
+export async function middleware(request: NextRequest) {
+  const url = request.nextUrl;
+  let hostname = request.headers.get('host');
+
+  // Handle internal requests without a host header
+  if (!hostname) {
+    return NextResponse.next();
+  }
+
+  // Remove port for local dev
+  hostname = hostname.replace(/:\d+$/, '');
+
+  // Master Admin Domain (e.g. app.localhost)
+  const isMaster = hostname === 'app.localhost';
+
+  const searchParams = url.searchParams.toString();
+  const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ''}`;
+
+  // 1. Check Auth for Admin routes (both Master and Store Admins)
+  if (url.pathname.startsWith('/admin') || (isMaster && !url.pathname.startsWith('/login'))) {
+    // Skip checking on the login page itself
+    if (url.pathname !== '/admin/login' && url.pathname !== '/login') {
+      const sessionCookie = request.cookies.get('admin_session')?.value;
+      if (!sessionCookie) {
+        // Redirect to appropriate login
+        return NextResponse.redirect(new URL(isMaster ? '/login' : '/admin/login', request.url));
+      }
+      try {
+        await jwtVerify(sessionCookie, key, { algorithms: ['HS256'] });
+      } catch (e) {
+        const response = NextResponse.redirect(new URL(isMaster ? '/login' : '/admin/login', request.url));
+        response.cookies.delete('admin_session');
+        return response;
+      }
+    }
+  }
+
+  // 2. Rewrite routing based on hostname
+  if (isMaster) {
+    return NextResponse.rewrite(new URL(`/master${path}`, request.url));
+  }
+
+  // 3. For store domains
+  return NextResponse.rewrite(new URL(`/${hostname}${path}`, request.url));
+}

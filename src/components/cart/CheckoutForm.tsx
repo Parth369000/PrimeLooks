@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { Input } from '@/components/uitoolkit/Input';
-import { validateCoupon } from '@/app/actions/coupon';
 import { createOrder } from '@/app/actions/order';
 import { Button } from '@/components/uitoolkit/Button';
 
@@ -18,53 +17,40 @@ export const CheckoutForm = ({ whatsappNumber }: CheckoutFormProps) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  
-  // Coupon state
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<{
-    id: number;
-    code: string;
-    discountType: string;
-    discountValue: number;
-    discountAmount: number;
-  } | null>(null);
-  const [couponError, setCouponError] = useState('');
-  const [isValidating, setIsValidating] = useState(false);
+  const [errors, setErrors] = useState({ name: '', phone: '', address: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) return;
-    setIsValidating(true);
-    setCouponError('');
-    try {
-      const result = await validateCoupon(couponCode, subtotal);
-      if (result.success && result.coupon) {
-        setAppliedCoupon(result.coupon);
-        showToast(`Coupon "${result.coupon.code}" applied!`, 'success');
-      } else {
-        setCouponError(result.message || 'Invalid coupon');
-        setAppliedCoupon(null);
-      }
-    } catch (error) {
-      setCouponError('Error validating coupon');
-    } finally {
-      setIsValidating(false);
+  const finalTotal = subtotal;
+
+  const validateForm = () => {
+    let isValid = true;
+    const newErrors = { name: '', phone: '', address: '' };
+
+    if (!name.trim() || name.trim().length < 2) {
+      newErrors.name = 'Please enter a valid full name (min 2 characters).';
+      isValid = false;
     }
-  };
 
-  const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponCode('');
-    setCouponError('');
-  };
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(phone)) {
+      newErrors.phone = 'Please enter a valid 10-digit mobile number.';
+      isValid = false;
+    }
 
-  const finalTotal = subtotal - (appliedCoupon?.discountAmount || 0);
+    if (!address.trim() || address.trim().length < 15) {
+      newErrors.address = 'Please provide a detailed address (min 15 chars) including House No, Street, and Pincode.';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !phone || !address) {
-      showToast('Please fill all required fields.', 'error');
+    if (!validateForm()) {
+      showToast('Please fix the errors in your delivery details.', 'error');
       return;
     }
 
@@ -77,8 +63,7 @@ export const CheckoutForm = ({ whatsappNumber }: CheckoutFormProps) => {
         customerPhone: phone,
         customerAddress: address,
         totalAmount: finalTotal,
-        discountAmount: appliedCoupon?.discountAmount || 0,
-        couponId: appliedCoupon?.id,
+        discountAmount: 0,
         items: items.map(i => ({
           productId: i.id,
           quantity: i.quantity,
@@ -98,8 +83,6 @@ export const CheckoutForm = ({ whatsappNumber }: CheckoutFormProps) => {
         `📍 *Address:* ${address}\n\n` +
         `📦 *Order Details:*\n${itemLines}\n\n` +
         (totalSavings > 0 ? `🎉 *Original Savings:* ₹${totalSavings}\n` : '') +
-        (appliedCoupon ? `🎟️ *Coupon Applied:* ${appliedCoupon.code}\n` : '') +
-        (appliedCoupon ? `📉 *Coupon Discount:* -₹${appliedCoupon.discountAmount}\n` : '') +
         `💰 *Final Total:* ₹${finalTotal}\n\n` +
         `Please confirm my order. Thank you!`
       );
@@ -115,7 +98,6 @@ export const CheckoutForm = ({ whatsappNumber }: CheckoutFormProps) => {
         setName('');
         setPhone('');
         setAddress('');
-        handleRemoveCoupon();
         setIsSubmitting(false);
       }, 1500);
 
@@ -178,16 +160,6 @@ export const CheckoutForm = ({ whatsappNumber }: CheckoutFormProps) => {
                 </div>
               )}
 
-              {appliedCoupon && (
-                <div className="flex justify-between text-sm text-brand-600 font-medium">
-                  <div className="flex flex-col">
-                    <span>Coupon Discount</span>
-                    <span className="text-[10px] text-brand-400">({appliedCoupon.code})</span>
-                  </div>
-                  <span>−₹{appliedCoupon.discountAmount}</span>
-                </div>
-              )}
-
               <div className="flex justify-between text-xl font-black text-gray-900 pt-3 border-t border-gray-100">
                 <span>Total</span>
                 <span className="text-brand-600">₹{finalTotal}</span>
@@ -195,62 +167,7 @@ export const CheckoutForm = ({ whatsappNumber }: CheckoutFormProps) => {
             </div>
           </div>
 
-          {/* Coupon Section */}
-          <div className="bg-brand-50/50 border border-brand-100/50 rounded-2xl p-6">
-            <h4 className="text-sm font-bold text-brand-900 mb-3 flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-              </svg>
-              Apply Coupon
-            </h4>
-            
-            {!appliedCoupon ? (
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <input
-                    placeholder="Enter coupon code"
-                    className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 text-sm transition-all"
-                    value={couponCode}
-                    onChange={(e) => {
-                      setCouponCode(e.target.value.toUpperCase());
-                      setCouponError('');
-                    }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
-                  />
-                  <Button 
-                    variant="brand" 
-                    size="sm" 
-                    onClick={handleApplyCoupon}
-                    disabled={!couponCode || isValidating}
-                    className="h-[38px]"
-                  >
-                    {isValidating ? '...' : 'Apply'}
-                  </Button>
-                </div>
-                {couponError && <p className="text-xs text-red-500 ml-1">{couponError}</p>}
-              </div>
-            ) : (
-              <div className="flex items-center justify-between bg-green-50 border border-green-200 p-3 rounded-xl">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-green-800">{appliedCoupon.code}</p>
-                    <p className="text-[10px] text-green-600">Coupon applied successfully!</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={handleRemoveCoupon}
-                  className="text-xs font-medium text-gray-400 hover:text-red-500 transition-colors px-2 py-1"
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-          </div>
+
         </div>
 
         {/* Customer Form */}
@@ -270,7 +187,11 @@ export const CheckoutForm = ({ whatsappNumber }: CheckoutFormProps) => {
                 name="name"
                 placeholder="John Doe"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                error={errors.name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+                }}
                 required
               />
               <Input
@@ -278,22 +199,42 @@ export const CheckoutForm = ({ whatsappNumber }: CheckoutFormProps) => {
                 name="phone"
                 type="tel"
                 placeholder="10 digit mobile number"
+                maxLength={10}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                error={errors.phone}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, ''); // Allow digits only
+                  setPhone(val);
+                  if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
+                }}
                 required
               />
             </div>
 
-            <div className="flex flex-col gap-1.5 w-full">
-              <label className="text-sm font-bold text-gray-700">Detailed Address</label>
+            <div className="flex flex-col gap-1.5 w-full relative">
+              <label className="text-sm font-medium text-gray-700">
+                Detailed Address <span className="text-red-500">*</span>
+              </label>
               <textarea
                 name="address"
                 placeholder="Street name, House No, Landmark, City, State, Pincode"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white min-h-[120px] text-sm transition-all"
+                className={`w-full px-4 py-3 bg-gray-50 border rounded-xl shadow-sm outline-none focus:ring-2 min-h-[120px] text-sm transition-all ${
+                  errors.address 
+                    ? 'border-red-500 focus:ring-red-200 focus:border-red-500' 
+                    : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 hover:border-gray-300'
+                }`}
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={(e) => {
+                  setAddress(e.target.value);
+                  if (errors.address) setErrors(prev => ({ ...prev, address: '' }));
+                }}
                 required
               />
+              {errors.address && (
+                <span className="text-sm text-red-500 font-medium mt-0.5">
+                  {errors.address}
+                </span>
+              )}
             </div>
 
             <button

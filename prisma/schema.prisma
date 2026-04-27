@@ -7,25 +7,70 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  SUPER_ADMIN
+  STORE_ADMIN
+}
+
+model Store {
+  id          Int      @id @default(autoincrement())
+  name        String
+  domain      String   @unique // The subdomain or custom domain (e.g., fashion.localhost or myfashion.com)
+  themeColor  String   @default("#000000")
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users         User[]
+  categories    Category[]
+  subCategories SubCategory[]
+  products      Product[]
+  heroImages    HeroSliderImage[]
+  coupons       Coupon[]
+  orders        Order[]
+  settings      Setting[]
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String   // Hashed password
+  role      Role     @default(STORE_ADMIN)
+  storeId   Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store     Store?   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
 model Category {
   id            Int           @id @default(autoincrement())
+  storeId       Int
   name          String
-  slug          String        @unique
+  slug          String
+  store         Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
   products      Product[]
   subCategories SubCategory[]
+  
+  @@unique([storeId, slug])
 }
 
 model SubCategory {
   id          Int        @id @default(autoincrement())
+  storeId     Int
   categoryId  Int
   name        String
-  slug        String     @unique
-  category    Category   @relation(fields: [categoryId], references: [id])
+  slug        String     
+  store       Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category    Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   products    Product[]
+  
+  @@unique([storeId, slug])
 }
 
 model Product {
   id            Int             @id @default(autoincrement())
+  storeId       Int
   categoryId    Int
   subCategoryId Int?
   name          String
@@ -34,11 +79,13 @@ model Product {
   sellingPrice  Float
   stock         Int             @default(0)
   isVisible     Boolean         @default(true)
+  isTrending    Boolean         @default(false)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
-  category      Category        @relation(fields: [categoryId], references: [id])
-  subCategory   SubCategory?    @relation(fields: [subCategoryId], references: [id])
+  store         Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category      Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  subCategory   SubCategory?    @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
   images        ProductImage[]
   orderItems    OrderItem[]
   wishlists     Wishlist[]
@@ -52,9 +99,20 @@ model ProductImage {
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
+model HeroSliderImage {
+  id        Int      @id @default(autoincrement())
+  storeId   Int
+  url       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
 model Coupon {
   id             Int      @id @default(autoincrement())
-  code           String   @unique
+  storeId        Int
+  code           String   
   discountType   String   // "PERCENTAGE" or "FIXED"
   discountValue  Float
   minCartValue   Float    @default(0)
@@ -64,10 +122,15 @@ model Coupon {
   expiryDate     DateTime?
   isActive       Boolean  @default(true)
   orders         Order[]
+  
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  
+  @@unique([storeId, code])
 }
 
 model Order {
   id               Int         @id @default(autoincrement())
+  storeId          Int
   customerName     String
   customerPhone    String
   customerAddress  String      @db.Text
@@ -78,7 +141,8 @@ model Order {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   
-  coupon           Coupon?     @relation(fields: [couponId], references: [id])
+  store            Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  coupon           Coupon?     @relation(fields: [couponId], references: [id], onDelete: SetNull)
   items            OrderItem[]
 }
 
@@ -90,7 +154,7 @@ model OrderItem {
   priceAtTime   Float
   
   order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product       Product  @relation(fields: [productId], references: [id])
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model Wishlist {
@@ -105,15 +169,12 @@ model Wishlist {
 }
 
 model Setting {
-  id    Int    @id @default(autoincrement())
-  key   String @unique
-  value String
-}
-
-model Admin {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String   // Hashed password
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id      Int    @id @default(autoincrement())
+  storeId Int
+  key     String 
+  value   String
+  
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  
+  @@unique([storeId, key])
 }

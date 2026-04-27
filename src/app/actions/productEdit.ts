@@ -16,6 +16,7 @@ export async function updateProduct(id: number, formData: FormData) {
   const categoryId = parseInt(formData.get('categoryId') as string, 10);
   const thumbnail = formData.get('thumbnail') as string;
   const galleryImages = formData.getAll('galleryImages') as string[];
+  const isTrending = formData.get('isTrending') === 'on';
 
   if (!name || !description || !actualPrice || !sellingPrice || !categoryId) {
     throw new Error('Missing required fields');
@@ -30,6 +31,7 @@ export async function updateProduct(id: number, formData: FormData) {
       sellingPrice,
       stock: isNaN(stock) ? 0 : stock,
       categoryId,
+      isTrending,
     },
   });
 

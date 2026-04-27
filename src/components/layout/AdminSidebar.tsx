@@ -20,6 +20,7 @@ const marketingItems = [
 ];
 
 const systemItems = [
+  { href: '/admin/hero', label: 'Hero Slider', icon: '🖼️' },
   { href: '/admin/settings', label: 'Settings', icon: '⚙️' },
 ];
 
@@ -48,9 +49,15 @@ export const AdminSidebar = () => {
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col min-h-screen text-slate-300">
       <div className="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950">
-        <Link href="/admin/dashboard" className="text-xl font-bold tracking-tight text-white">
-          Prime<span className="text-brand-400">Looks</span>
-          <span className="text-xs font-normal text-slate-500 ml-2">Admin</span>
+        <Link href="/admin/dashboard" className="flex items-center group">
+          <svg className="w-7 h-7 mr-2 text-white group-hover:text-amber-400 transition-colors" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round">
+            <polygon points="16,2 30,10 30,22 16,30 2,22 2,10" />
+            <path d="M12 22V10h5c2.2 0 4 1.8 4 4s-1.8 4-4 4h-5" />
+          </svg>
+          <span className="text-lg font-light tracking-[0.15em] uppercase text-white">
+            Prime<span className="font-bold">Looks</span>
+          </span>
+          <Badge variant="success" className="ml-3 !px-1.5 !py-0.5 text-[9px] bg-white/10 text-white border-0">ADMIN</Badge>
         </Link>
       </div>
 

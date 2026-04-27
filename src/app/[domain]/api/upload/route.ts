@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
+import { v2 as cloudinary } from 'cloudinary';
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,22 +17,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No files uploaded' }, { status: 400 });
     }
 
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'products');
-    await mkdir(uploadDir, { recursive: true });
-
     const urls: string[] = [];
 
     for (const file of files) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
+      
+      // Convert buffer to base64 string
+      const base64Data = buffer.toString('base64');
+      const mimeType = file.type || 'image/jpeg';
+      const fileUri = `data:${mimeType};base64,${base64Data}`;
 
-      // Generate unique filename
-      const ext = path.extname(file.name) || '.jpg';
-      const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
-      const filepath = path.join(uploadDir, filename);
+      // Upload to Cloudinary
+      const uploadResponse = await cloudinary.uploader.upload(fileUri, {
+        folder: 'primelooks_products',
+        resource_type: 'auto', // Handles both image and video
+      });
 
-      await writeFile(filepath, buffer);
-      urls.push(`/uploads/products/${filename}`);
+      urls.push(uploadResponse.secure_url);
     }
 
     return NextResponse.json({ urls });

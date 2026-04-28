@@ -42,3 +42,15 @@ export async function logoutAction() {
   await logout();
   redirect('/admin/login');
 }
+
+export async function masterLogoutAction() {
+  const { logout } = await import('@/lib/auth');
+  await logout();
+  redirect('/master/login');
+}
+
+export async function checkSessionAction(): Promise<{ valid: boolean }> {
+  const { getSession } = await import('@/lib/auth');
+  const session = await getSession();
+  return { valid: !!session };
+}

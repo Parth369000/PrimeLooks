@@ -33,7 +33,7 @@ export async function uploadHeroImages(formData: FormData) {
   revalidatePath('/admin/hero');
 }
 
-export async function deleteHeroImage(id: number) {
+export async function deleteHeroImage(id: number, _formData?: FormData) {
   const session = await getSession();
   if (!session) throw new Error('Unauthorized');
 

@@ -11,15 +11,23 @@ cloudinary.config({
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const files = formData.getAll('files') as File[];
+    const files = formData.getAll('files');
 
-    if (!files || files.length === 0) {
-      return NextResponse.json({ error: 'No files uploaded' }, { status: 400 });
+    // Filter out non-File entries (empty strings, etc.)
+    const validFiles = files.filter(
+      (f): f is File => f instanceof File && f.size > 0
+    );
+
+    if (validFiles.length === 0) {
+      return NextResponse.json(
+        { error: 'No valid files uploaded. Please select image files.' },
+        { status: 400 }
+      );
     }
 
     const urls: string[] = [];
 
-    for (const file of files) {
+    for (const file of validFiles) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
       
@@ -31,15 +39,19 @@ export async function POST(request: NextRequest) {
       // Upload to Cloudinary
       const uploadResponse = await cloudinary.uploader.upload(fileUri, {
         folder: 'primelooks_products',
-        resource_type: 'auto', // Handles both image and video
+        resource_type: 'auto',
       });
 
       urls.push(uploadResponse.secure_url);
     }
 
     return NextResponse.json({ urls });
-  } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Upload error:', message);
+    return NextResponse.json(
+      { error: `Upload failed: ${message}` },
+      { status: 500 }
+    );
   }
 }

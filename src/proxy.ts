@@ -25,8 +25,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Remove port for local dev
-  hostname = hostname.replace(/:\d+$/, '');
+  // Remove port for local dev and strip www. prefix
+  hostname = hostname.replace(/:\d+$/, '').replace(/^www\./, '');
 
   // Check if it's a native master route
   const isMasterRoute = url.pathname.startsWith('/master');

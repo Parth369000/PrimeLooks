@@ -7,11 +7,16 @@ import { Card } from '@/components/uitoolkit/Card';
 import { Badge } from '@/components/uitoolkit/Badge';
 import { ActionForm } from '@/components/admin/ActionForm';
 import { ActionButton } from '@/components/admin/ActionButton';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CouponsPage() {
-  const coupons = await prisma.coupon.findMany({ orderBy: { id: 'desc' } });
+  const session = await requireStoreAdminSession();
+  const coupons = await prisma.coupon.findMany({
+    where: { storeId: session.storeId },
+    orderBy: { id: 'desc' },
+  });
 
   return (
     <div className="space-y-6">

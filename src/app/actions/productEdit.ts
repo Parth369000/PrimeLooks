@@ -2,11 +2,10 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { getSession } from '@/lib/auth';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export async function updateProduct(id: number, formData: FormData) {
-  const session = await getSession();
-  if (!session) throw new Error('Unauthorized');
+  const session = await requireStoreAdminSession();
 
   const name = formData.get('name') as string;
   const description = formData.get('description') as string;
@@ -21,6 +20,18 @@ export async function updateProduct(id: number, formData: FormData) {
   if (!name || !description || !actualPrice || !sellingPrice || !categoryId) {
     throw new Error('Missing required fields');
   }
+
+  const category = await prisma.category.findFirst({
+    where: { id: categoryId, storeId: session.storeId },
+    select: { id: true },
+  });
+  if (!category) throw new Error('Invalid category');
+
+  const product = await prisma.product.findFirst({
+    where: { id, storeId: session.storeId },
+    select: { id: true },
+  });
+  if (!product) throw new Error('Product not found');
 
   await prisma.product.update({
     where: { id },

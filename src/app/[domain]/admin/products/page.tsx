@@ -6,12 +6,18 @@ import { Badge } from '@/components/uitoolkit/Badge';
 import { ProductForm } from '@/components/admin/ProductForm';
 import { ActionButton } from '@/components/admin/ActionButton';
 import Link from 'next/link';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProductsPage() {
-  const categories = await prisma.category.findMany();
+  const session = await requireStoreAdminSession();
+  const categories = await prisma.category.findMany({
+    where: { storeId: session.storeId },
+    orderBy: { name: 'asc' },
+  });
   const products = await prisma.product.findMany({
+    where: { storeId: session.storeId },
     include: {
       category: true,
       images: { orderBy: { isPrimary: 'desc' } },

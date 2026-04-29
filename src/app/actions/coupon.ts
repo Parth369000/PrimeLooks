@@ -2,11 +2,10 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { getSession } from '@/lib/auth';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export async function createCoupon(formData: FormData) {
-  const session = await getSession();
-  if (!session) throw new Error('Unauthorized');
+  const session = await requireStoreAdminSession();
 
   const code = (formData.get('code') as string).toUpperCase().trim();
   const discountType = formData.get('discountType') as string;
@@ -20,9 +19,6 @@ export async function createCoupon(formData: FormData) {
     throw new Error('Missing required fields');
   }
 
-  const user = await prisma.user.findUnique({ where: { id: session.adminId } });
-  if (!user || !user.storeId) throw new Error('User has no store assigned');
-
   await prisma.coupon.create({
     data: {
       code,
@@ -33,7 +29,7 @@ export async function createCoupon(formData: FormData) {
       usageLimit,
       expiryDate,
       isActive: true,
-      storeId: user.storeId,
+      storeId: session.storeId,
     },
   });
 
@@ -41,8 +37,10 @@ export async function createCoupon(formData: FormData) {
 }
 
 export async function toggleCouponStatus(id: number, currentStatus: boolean) {
-  await prisma.coupon.update({
-    where: { id },
+  const session = await requireStoreAdminSession();
+
+  await prisma.coupon.updateMany({
+    where: { id, storeId: session.storeId },
     data: { isActive: !currentStatus },
   });
 
@@ -50,20 +48,21 @@ export async function toggleCouponStatus(id: number, currentStatus: boolean) {
 }
 
 export async function deleteCoupon(id: number) {
-  const session = await getSession();
-  if (!session) throw new Error('Unauthorized');
+  const session = await requireStoreAdminSession();
 
-  await prisma.coupon.delete({
-    where: { id },
+  await prisma.coupon.deleteMany({
+    where: { id, storeId: session.storeId },
   });
 
   revalidatePath('/admin/coupons');
 }
 
-export async function validateCoupon(code: string, cartTotal: number) {
-  // In a real multi-tenant app we would pass the storeId or domain. For now findFirst by code.
+export async function validateCoupon(code: string, cartTotal: number, domain: string) {
   const coupon = await prisma.coupon.findFirst({
-    where: { code: code.toUpperCase().trim() },
+    where: {
+      code: code.toUpperCase().trim(),
+      store: { domain: decodeURIComponent(domain) },
+    },
   });
 
   if (!coupon) {

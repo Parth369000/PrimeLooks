@@ -2,20 +2,17 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { getSession } from '@/lib/auth';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export async function uploadHeroImages(formData: FormData) {
-  const session = await getSession();
-  if (!session) throw new Error('Unauthorized');
+  const session = await requireStoreAdminSession();
 
   const galleryImages = formData.getAll('galleryImages') as string[];
   const validGallery = galleryImages.filter(url => url && url.trim() !== '');
 
   if (validGallery.length > 0) {
-    const user = await prisma.user.findUnique({ where: { id: session.adminId } });
-    if (!user || !user.storeId) throw new Error('User has no store assigned');
-
     const maxOrderRes = await prisma.heroSliderImage.aggregate({
+      where: { storeId: session.storeId },
       _max: { order: true }
     });
     let currentOrder = (maxOrderRes._max.order ?? 0) + 1;
@@ -24,7 +21,7 @@ export async function uploadHeroImages(formData: FormData) {
       data: validGallery.map(url => ({
         url,
         order: currentOrder++,
-        storeId: user.storeId!
+        storeId: session.storeId
       }))
     });
   }
@@ -33,12 +30,11 @@ export async function uploadHeroImages(formData: FormData) {
   revalidatePath('/admin/hero');
 }
 
-export async function deleteHeroImage(id: number, _formData?: FormData) {
-  const session = await getSession();
-  if (!session) throw new Error('Unauthorized');
+export async function deleteHeroImage(id: number) {
+  const session = await requireStoreAdminSession();
 
-  await prisma.heroSliderImage.delete({
-    where: { id }
+  await prisma.heroSliderImage.deleteMany({
+    where: { id, storeId: session.storeId }
   });
 
   revalidatePath('/');

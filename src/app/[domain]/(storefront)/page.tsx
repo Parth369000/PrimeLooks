@@ -1,8 +1,5 @@
 import React from 'react';
-import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
-import { Button } from '@/components/uitoolkit/Button';
-import { Badge } from '@/components/uitoolkit/Badge';
 import { ProductCard } from '@/components/product/ProductCard';
 import { HeroVideoSlider } from '@/components/layout/HeroVideoSlider';
 

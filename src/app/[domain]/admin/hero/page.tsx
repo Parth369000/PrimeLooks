@@ -6,11 +6,14 @@ import { ImageUploader } from '@/components/admin/ImageUploader';
 import { uploadHeroImages, deleteHeroImage } from '@/app/actions/hero';
 import { Button } from '@/components/uitoolkit/Button';
 import Image from 'next/image';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HeroSliderAdminPage() {
+  const session = await requireStoreAdminSession();
   const images = await prisma.heroSliderImage.findMany({
+    where: { storeId: session.storeId },
     orderBy: { order: 'asc' }
   });
 

@@ -1,12 +1,14 @@
 'use server';
 
+import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-// Using simple hashing for demo purposes, replace with bcrypt or similar in production
-import crypto from 'crypto';
+import { requireSuperAdminSession } from '@/lib/auth';
 
 export async function createStore(formData: FormData) {
+  await requireSuperAdminSession();
+
   const name = formData.get('name') as string;
   const domain = formData.get('domain') as string;
   const themeColor = formData.get('themeColor') as string;
@@ -30,8 +32,8 @@ export async function createStore(formData: FormData) {
       return { error: 'Username already in use.' };
     }
 
-    // 3. Hash password (simple demo hash)
-    const hashedPassword = crypto.createHash('sha256').update(adminPassword).digest('hex');
+    // 3. Hash password with bcrypt for newly created admins.
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
     // 4. Create Store and Admin User in a transaction
     await prisma.$transaction(async (tx) => {
@@ -54,7 +56,7 @@ export async function createStore(formData: FormData) {
     });
 
     revalidatePath('/');
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating store:', error);
     return { error: 'Failed to create store.' };
   }

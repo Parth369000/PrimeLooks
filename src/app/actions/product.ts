@@ -2,11 +2,10 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { getSession } from '@/lib/auth';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export async function createProduct(formData: FormData) {
-  const session = await getSession();
-  if (!session) throw new Error('Unauthorized');
+  const session = await requireStoreAdminSession();
 
   const name = formData.get('name') as string;
   const description = formData.get('description') as string;
@@ -22,12 +21,15 @@ export async function createProduct(formData: FormData) {
     throw new Error('Missing required fields');
   }
 
-  const user = await prisma.user.findUnique({ where: { id: session.adminId } });
-  if (!user || !user.storeId) throw new Error('User has no store assigned');
+  const category = await prisma.category.findFirst({
+    where: { id: categoryId, storeId: session.storeId },
+    select: { id: true },
+  });
+  if (!category) throw new Error('Invalid category');
 
   const product = await prisma.product.create({
     data: {
-      storeId: user.storeId,
+      storeId: session.storeId,
       name,
       description,
       actualPrice,
@@ -68,22 +70,20 @@ export async function createProduct(formData: FormData) {
 }
 
 export async function deleteProduct(id: number) {
-  const session = await getSession();
-  if (!session) throw new Error('Unauthorized');
+  const session = await requireStoreAdminSession();
 
-  await prisma.product.delete({
-    where: { id },
+  await prisma.product.deleteMany({
+    where: { id, storeId: session.storeId },
   });
 
   revalidatePath('/admin/products');
 }
 
 export async function toggleProductVisibility(id: number, currentVisibility: boolean) {
-  const session = await getSession();
-  if (!session) throw new Error('Unauthorized');
+  const session = await requireStoreAdminSession();
 
-  await prisma.product.update({
-    where: { id },
+  await prisma.product.updateMany({
+    where: { id, storeId: session.storeId },
     data: { isVisible: !currentVisibility },
   });
 

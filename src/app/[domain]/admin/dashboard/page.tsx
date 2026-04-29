@@ -3,15 +3,19 @@ import { prisma } from '@/lib/prisma';
 import { Card } from '@/components/uitoolkit/Card';
 import { Badge } from '@/components/uitoolkit/Badge';
 import Link from 'next/link';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboard() {
+  const session = await requireStoreAdminSession();
+
   const [totalProducts, totalCategories, totalOrders, recentOrders] = await Promise.all([
-    prisma.product.count(),
-    prisma.category.count(),
-    prisma.order.count(),
+    prisma.product.count({ where: { storeId: session.storeId } }),
+    prisma.category.count({ where: { storeId: session.storeId } }),
+    prisma.order.count({ where: { storeId: session.storeId } }),
     prisma.order.findMany({
+      where: { storeId: session.storeId },
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: { items: { include: { product: true } } },
@@ -20,10 +24,12 @@ export default async function AdminDashboard() {
 
   const revenue = await prisma.order.aggregate({
     _sum: { totalAmount: true },
-    where: { orderStatus: 'COMPLETED' },
+    where: { storeId: session.storeId, orderStatus: 'COMPLETED' },
   });
 
-  const pendingOrders = await prisma.order.count({ where: { orderStatus: 'PENDING' } });
+  const pendingOrders = await prisma.order.count({
+    where: { storeId: session.storeId, orderStatus: 'PENDING' },
+  });
 
   const stats = [
     { label: 'Total Products', value: totalProducts, color: 'bg-brand-500', icon: '📦' },

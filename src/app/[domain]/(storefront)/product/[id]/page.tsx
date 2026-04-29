@@ -15,8 +15,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   if (isNaN(productId)) return notFound();
 
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
+  const store = await prisma.store.findUnique({
+    where: { domain: decodeURIComponent(domain) },
+    select: { id: true },
+  });
+  if (!store) return notFound();
+
+  const product = await prisma.product.findFirst({
+    where: { id: productId, storeId: store.id },
     include: { category: true, images: { orderBy: { isPrimary: 'desc' } } },
   });
 
@@ -37,6 +43,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   // Related products from same category
   const relatedProducts = await prisma.product.findMany({
     where: {
+      storeId: store.id,
       categoryId: product.categoryId,
       isVisible: true,
       id: { not: product.id },
@@ -44,9 +51,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     take: 4,
     include: { category: true, images: { orderBy: { isPrimary: 'desc' } } },
   });
-
-  const mainImage = product.images.find(img => img.isPrimary) || product.images[0];
-  const galleryImages = product.images.filter(img => !img.isPrimary);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">

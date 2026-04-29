@@ -1,5 +1,6 @@
 'use server';
 
+import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import { setSession } from '@/lib/auth';
@@ -15,20 +16,30 @@ export async function loginAction(formData: FormData) {
 
   const user = await prisma.user.findUnique({
     where: { username },
+    include: { store: true },
   });
 
   if (!user) {
     return { error: 'Invalid credentials' };
   }
 
-  // We are using a simple sha256 hash in this iteration
-  const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+  const sha256Password = crypto.createHash('sha256').update(password).digest('hex');
+  const isBcryptHash = user.password.startsWith('$2');
+  const isValidPassword = isBcryptHash
+    ? await bcrypt.compare(password, user.password)
+    : sha256Password === user.password;
 
-  if (hashedPassword !== user.password) {
+  if (!isValidPassword) {
     return { error: 'Invalid credentials' };
   }
 
-  await setSession(user.id, user.username);
+  await setSession(
+    user.id,
+    user.username,
+    user.role,
+    user.storeId ?? null,
+    user.store?.domain ?? null
+  );
   
   if (user.role === 'SUPER_ADMIN') {
     redirect('/');

@@ -5,12 +5,16 @@ import { Button } from '@/components/uitoolkit/Button';
 import { Input } from '@/components/uitoolkit/Input';
 import { Card } from '@/components/uitoolkit/Card';
 import { ActionForm } from '@/components/admin/ActionForm';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
-  const settings = await prisma.setting.findMany();
-  const whatsappNumber = settings.find(s => s.key === 'whatsapp_number')?.value || '';
+  const session = await requireStoreAdminSession();
+  const whatsappSetting = await prisma.setting.findUnique({
+    where: { storeId_key: { storeId: session.storeId, key: 'whatsapp_number' } },
+  });
+  const whatsappNumber = whatsappSetting?.value || '';
 
   return (
     <div className="space-y-6 max-w-3xl">

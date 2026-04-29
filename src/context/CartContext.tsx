@@ -26,6 +26,19 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+function getInitialCartItems(): CartItem[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const saved = window.localStorage.getItem('primelooks_cart');
+    return saved ? (JSON.parse(saved) as CartItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) throw new Error('useCart must be used within CartProvider');
@@ -33,16 +46,8 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(getInitialCartItems);
   const [isCartOpen, setIsCartOpen] = useState(false);
-
-  // Load cart from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('primelooks_cart');
-    if (saved) {
-      try { setItems(JSON.parse(saved)); } catch {}
-    }
-  }, []);
 
   // Save cart to localStorage on change
   useEffect(() => {

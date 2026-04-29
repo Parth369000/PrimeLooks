@@ -3,6 +3,15 @@ import { jwtVerify } from 'jose';
 
 const secretKey = process.env.JWT_SECRET || 'prime_looks_secret_development_key';
 const key = new TextEncoder().encode(secretKey);
+const masterDomain = (process.env.MASTER_DOMAIN || 'app.localhost').toLowerCase();
+
+interface SessionPayload {
+  adminId?: number;
+  username?: string;
+  role?: 'SUPER_ADMIN' | 'STORE_ADMIN';
+  storeId?: number | null;
+  storeDomain?: string | null;
+}
 
 export const config = {
   matcher: [
@@ -32,7 +41,7 @@ export async function proxy(request: NextRequest) {
   const isMasterRoute = url.pathname.startsWith('/master');
 
   // Master Admin Domain (e.g. app.localhost)
-  const isMasterDomain = hostname === 'app.localhost';
+  const isMasterDomain = hostname === masterDomain;
 
   const searchParams = url.searchParams.toString();
   const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ''}`;
@@ -47,8 +56,19 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(new URL((isMasterRoute || isMasterDomain) ? '/master/login' : '/admin/login', request.url));
       }
       try {
-        await jwtVerify(sessionCookie, key, { algorithms: ['HS256'] });
-      } catch (e) {
+        const { payload } = await jwtVerify(sessionCookie, key, { algorithms: ['HS256'] });
+        const session = payload as SessionPayload;
+
+        if (isMasterRoute || isMasterDomain) {
+          if (session.role !== 'SUPER_ADMIN') {
+            throw new Error('Forbidden');
+          }
+        } else if (url.pathname.startsWith('/admin')) {
+          if (session.role !== 'STORE_ADMIN' || !session.storeDomain || session.storeDomain !== hostname) {
+            throw new Error('Forbidden');
+          }
+        }
+      } catch {
         const response = NextResponse.redirect(new URL((isMasterRoute || isMasterDomain) ? '/master/login' : '/admin/login', request.url));
         response.cookies.delete('admin_session');
         return response;

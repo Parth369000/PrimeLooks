@@ -2,11 +2,10 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { getSession } from '@/lib/auth';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export async function createCategory(formData: FormData) {
-  const session = await getSession();
-  if (!session) throw new Error('Unauthorized');
+  const session = await requireStoreAdminSession();
 
   const name = formData.get('name') as string;
   
@@ -17,14 +16,11 @@ export async function createCategory(formData: FormData) {
   // Basic slugification
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
-  const user = await prisma.user.findUnique({ where: { id: session.adminId } });
-  if (!user || !user.storeId) throw new Error('User has no store assigned');
-
   await prisma.category.create({
     data: {
       name,
       slug,
-      storeId: user.storeId,
+      storeId: session.storeId,
     },
   });
 
@@ -32,11 +28,10 @@ export async function createCategory(formData: FormData) {
 }
 
 export async function deleteCategory(id: number) {
-  const session = await getSession();
-  if (!session) throw new Error('Unauthorized');
+  const session = await requireStoreAdminSession();
 
-  await prisma.category.delete({
-    where: { id },
+  await prisma.category.deleteMany({
+    where: { id, storeId: session.storeId },
   });
 
   revalidatePath('/admin/categories');

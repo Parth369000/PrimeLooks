@@ -5,21 +5,26 @@ import { updateProduct } from '@/app/actions/productEdit';
 import { Card } from '@/components/uitoolkit/Card';
 import { ProductEditForm } from '@/components/admin/ProductEditForm';
 import Link from 'next/link';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await requireStoreAdminSession();
   const { id } = await params;
   const productId = parseInt(id, 10);
   if (isNaN(productId)) return notFound();
 
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
+  const product = await prisma.product.findFirst({
+    where: { id: productId, storeId: session.storeId },
     include: { images: true },
   });
   if (!product) return notFound();
 
-  const categories = await prisma.category.findMany();
+  const categories = await prisma.category.findMany({
+    where: { storeId: session.storeId },
+    orderBy: { name: 'asc' },
+  });
 
   const updateAction = updateProduct.bind(null, productId);
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -10,6 +11,8 @@ cloudinary.config({
 
 export async function POST(request: NextRequest) {
   try {
+    await requireStoreAdminSession();
+
     const formData = await request.formData();
     const files = formData.getAll('files');
 
@@ -25,9 +28,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (validFiles.length > 10) {
+      return NextResponse.json(
+        { error: 'Please upload at most 10 files at a time.' },
+        { status: 400 }
+      );
+    }
+
     const urls: string[] = [];
 
     for (const file of validFiles) {
+      if (!file.type.startsWith('image/')) {
+        return NextResponse.json(
+          { error: 'Only image uploads are allowed.' },
+          { status: 400 }
+        );
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        return NextResponse.json(
+          { error: 'Each image must be 5MB or smaller.' },
+          { status: 400 }
+        );
+      }
+
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
       

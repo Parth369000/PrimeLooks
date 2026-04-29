@@ -4,11 +4,14 @@ import { updateOrderStatus, deleteOrder } from '@/app/actions/order';
 import { Card } from '@/components/uitoolkit/Card';
 import { Badge } from '@/components/uitoolkit/Badge';
 import { ActionButton } from '@/components/admin/ActionButton';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function OrdersPage() {
+  const session = await requireStoreAdminSession();
   const orders = await prisma.order.findMany({
+    where: { storeId: session.storeId },
     orderBy: { createdAt: 'desc' },
     include: {
       items: { include: { product: true } },

@@ -23,7 +23,7 @@ export function HeroVideoSlider({ images = [] }: HeroVideoSliderProps) {
       setCurrentIndex((prev) => (prev + 1) % activeImages.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [activeImages.length]);
 
   return (
     <section className="relative w-full h-screen min-h-[100svh] overflow-hidden bg-gray-950 flex flex-col items-center justify-center">

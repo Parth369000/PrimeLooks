@@ -6,11 +6,14 @@ import { Input } from '@/components/uitoolkit/Input';
 import { Card } from '@/components/uitoolkit/Card';
 import { ActionForm } from '@/components/admin/ActionForm';
 import { ActionButton } from '@/components/admin/ActionButton';
+import { requireStoreAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CategoriesPage() {
+  const session = await requireStoreAdminSession();
   const categories = await prisma.category.findMany({
+    where: { storeId: session.storeId },
     orderBy: { id: 'desc' },
     include: { _count: { select: { products: true } } },
   });

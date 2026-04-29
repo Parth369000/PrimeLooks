@@ -1,11 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useState } from 'react';
+import { createOrder } from '@/app/actions/order';
+import { Input } from '@/components/uitoolkit/Input';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
-import { Input } from '@/components/uitoolkit/Input';
-import { createOrder } from '@/app/actions/order';
-import { Button } from '@/components/uitoolkit/Button';
 
 interface CheckoutFormProps {
   whatsappNumber: string;
@@ -32,14 +32,14 @@ export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
       isValid = false;
     }
 
-    const phoneRegex = /^[0-9]{10}$/;
-    if (!phoneRegex.test(phone)) {
+    if (!/^[0-9]{10}$/.test(phone)) {
       newErrors.phone = 'Please enter a valid 10-digit mobile number.';
       isValid = false;
     }
 
     if (!address.trim() || address.trim().length < 15) {
-      newErrors.address = 'Please provide a detailed address (min 15 chars) including House No, Street, and Pincode.';
+      newErrors.address =
+        'Please provide a detailed address (min 15 chars) including House No, Street, and Pincode.';
       isValid = false;
     }
 
@@ -47,7 +47,7 @@ export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
     return isValid;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -58,7 +58,6 @@ export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
     setIsSubmitting(true);
 
     try {
-      // 1. Create order in DB (Save point)
       await createOrder({
         customerName: name,
         customerPhone: phone,
@@ -66,35 +65,34 @@ export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
         totalAmount: finalTotal,
         discountAmount: 0,
         domain,
-        items: items.map(i => ({
-          productId: i.id,
-          quantity: i.quantity,
-          priceAtTime: i.sellingPrice,
+        items: items.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+          priceAtTime: item.sellingPrice,
         })),
       });
 
-      // 2. Build WhatsApp message
-      const itemLines = items.map(
-        (item) => `▪ ${item.name} × ${item.quantity} = ₹${item.sellingPrice * item.quantity}`
-      ).join('\n');
+      const itemLines = items
+        .map(
+          (item) =>
+            `- ${item.name} x ${item.quantity} = Rs.${item.sellingPrice * item.quantity}`
+        )
+        .join('\n');
 
       const message = encodeURIComponent(
-        `🛒 *New Order from PrimeLooks*\n\n` +
-        `👤 *Customer:* ${name}\n` +
-        `📱 *Phone:* ${phone}\n` +
-        `📍 *Address:* ${address}\n\n` +
-        `📦 *Order Details:*\n${itemLines}\n\n` +
-        (totalSavings > 0 ? `🎉 *Original Savings:* ₹${totalSavings}\n` : '') +
-        `💰 *Final Total:* ₹${finalTotal}\n\n` +
-        `Please confirm my order. Thank you!`
+        `New Order from PrimeLooks\n\n` +
+          `Customer: ${name}\n` +
+          `Phone: ${phone}\n` +
+          `Address: ${address}\n\n` +
+          `Order Details:\n${itemLines}\n\n` +
+          (totalSavings > 0 ? `Original Savings: Rs.${totalSavings}\n` : '') +
+          `Final Total: Rs.${finalTotal}\n\n` +
+          `Please confirm my order. Thank you!`
       );
 
-      // 3. Open WhatsApp
       window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
-      
       showToast('Order saved and WhatsApp opened!', 'success');
-      
-      // 4. Reset & Clear
+
       setTimeout(() => {
         clearCart();
         setName('');
@@ -102,10 +100,12 @@ export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
         setAddress('');
         setIsSubmitting(false);
       }, 1500);
-
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Order Error:', err);
-      showToast(err.message || 'Failed to place order. Please try again.', 'error');
+      showToast(
+        err instanceof Error ? err.message : 'Failed to place order. Please try again.',
+        'error'
+      );
       setIsSubmitting(false);
     }
   };
@@ -118,7 +118,9 @@ export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
         </svg>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h2>
         <p className="text-gray-500 mb-6">Add some products before checking out.</p>
-        <a href="/" className="text-brand-600 hover:text-brand-700 font-semibold">← Back to Shopping</a>
+        <Link href="/" className="text-brand-600 hover:text-brand-700 font-semibold">
+          Back to Shopping
+        </Link>
       </div>
     );
   }
@@ -128,7 +130,6 @@ export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout via WhatsApp</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        {/* Order Summary */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm h-fit">
             <h3 className="font-bold text-xl text-gray-900 mb-4 flex items-center gap-2">
@@ -137,14 +138,17 @@ export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
               </svg>
               Order Summary
             </h3>
+
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {items.map((item) => (
                 <div key={item.id} className="flex gap-4">
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-gray-800 line-clamp-1">{item.name}</h4>
-                    <p className="text-xs text-gray-500">Qty: {item.quantity} × ₹{item.sellingPrice}</p>
+                    <p className="text-xs text-gray-500">Qty: {item.quantity} x Rs.{item.sellingPrice}</p>
                   </div>
-                  <span className="text-sm font-bold text-gray-900 whitespace-nowrap">₹{item.sellingPrice * item.quantity}</span>
+                  <span className="text-sm font-bold text-gray-900 whitespace-nowrap">
+                    Rs.{item.sellingPrice * item.quantity}
+                  </span>
                 </div>
               ))}
             </div>
@@ -152,27 +156,24 @@ export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
             <div className="border-t border-dashed border-gray-200 mt-6 pt-6 space-y-3">
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Subtotal</span>
-                <span>₹{subtotal}</span>
+                <span>Rs.{subtotal}</span>
               </div>
-              
+
               {totalSavings > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>Product Savings</span>
-                  <span>−₹{totalSavings}</span>
+                  <span>-Rs.{totalSavings}</span>
                 </div>
               )}
 
               <div className="flex justify-between text-xl font-black text-gray-900 pt-3 border-t border-gray-100">
                 <span>Total</span>
-                <span className="text-brand-600">₹{finalTotal}</span>
+                <span className="text-brand-600">Rs.{finalTotal}</span>
               </div>
             </div>
           </div>
-
-
         </div>
 
-        {/* Customer Form */}
         <form onSubmit={handleSubmit} className="lg:col-span-3 space-y-6">
           <div className="bg-white border border-gray-100 rounded-3xl p-8 shadow-sm space-y-6">
             <h3 className="font-bold text-xl text-gray-900 flex items-center gap-2 mb-2">
@@ -192,7 +193,7 @@ export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
                 error={errors.name}
                 onChange={(e) => {
                   setName(e.target.value);
-                  if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+                  if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
                 }}
                 required
               />
@@ -205,9 +206,9 @@ export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
                 value={phone}
                 error={errors.phone}
                 onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, ''); // Allow digits only
-                  setPhone(val);
-                  if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
+                  const value = e.target.value.replace(/\D/g, '');
+                  setPhone(value);
+                  if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
                 }}
                 required
               />
@@ -221,21 +222,19 @@ export const CheckoutForm = ({ whatsappNumber, domain }: CheckoutFormProps) => {
                 name="address"
                 placeholder="Street name, House No, Landmark, City, State, Pincode"
                 className={`w-full px-4 py-3 bg-gray-50 border rounded-xl shadow-sm outline-none focus:ring-2 min-h-[120px] text-sm transition-all ${
-                  errors.address 
-                    ? 'border-red-500 focus:ring-red-200 focus:border-red-500' 
+                  errors.address
+                    ? 'border-red-500 focus:ring-red-200 focus:border-red-500'
                     : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 hover:border-gray-300'
                 }`}
                 value={address}
                 onChange={(e) => {
                   setAddress(e.target.value);
-                  if (errors.address) setErrors(prev => ({ ...prev, address: '' }));
+                  if (errors.address) setErrors((prev) => ({ ...prev, address: '' }));
                 }}
                 required
               />
               {errors.address && (
-                <span className="text-sm text-red-500 font-medium mt-0.5">
-                  {errors.address}
-                </span>
+                <span className="text-sm text-red-500 font-medium mt-0.5">{errors.address}</span>
               )}
             </div>
 

@@ -1,10 +1,11 @@
 import React from 'react';
 import { Header } from '@/components/layout/Header';
-import { CartDrawer } from '@/components/cart/CartDrawer';
 import { CartProvider } from '@/context/CartContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
+import { StorefrontFooter } from '@/components/layout/StorefrontFooter';
+import { LuxuryCartDrawer } from '@/components/cart/LuxuryCartDrawer';
 
 export default async function StorefrontLayout({
   children,
@@ -15,33 +16,42 @@ export default async function StorefrontLayout({
 }) {
   const { domain } = await params;
   const store = await prisma.store.findUnique({
-    where: { domain }
+    where: { domain },
+    include: {
+      categories: {
+        orderBy: { id: 'asc' },
+        take: 6,
+      },
+      settings: {
+        where: { key: 'whatsapp_number' },
+        take: 1,
+      },
+    },
   });
 
   if (!store) {
     notFound();
   }
 
-  // Convert hex color to HSL for dynamic Tailwind variants if needed, or just set primary hex
-  // We'll set a raw CSS variable for the theme color.
   const themeStyles = {
     '--theme-primary': store.themeColor,
   } as React.CSSProperties;
+  const whatsappNumber = store.settings[0]?.value ?? null;
 
   return (
     <ToastProvider>
       <CartProvider>
-        <div className="flex flex-col min-h-screen" style={themeStyles}>
+        <div className="flex min-h-screen flex-col bg-[#f7f4ee]" style={themeStyles}>
           <Header storeId={store.id} storeName={store.name} logoUrl={store.logoUrl} />
-          <CartDrawer />
+          <LuxuryCartDrawer />
           <main className="flex-grow">
             {children}
           </main>
-          <footer className="bg-white border-t border-gray-100 py-10 mt-16">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500 text-sm">
-              <p>&copy; {new Date().getFullYear()} {store.name}. Powered by PrimeLooks SaaS.</p>
-            </div>
-          </footer>
+          <StorefrontFooter
+            storeName={store.name}
+            categories={store.categories}
+            whatsappNumber={whatsappNumber}
+          />
         </div>
       </CartProvider>
     </ToastProvider>

@@ -11,6 +11,7 @@ interface AddToCartButtonProps {
     sellingPrice: number;
     actualPrice: number;
     categoryName?: string;
+    thumbnailUrl?: string;
   };
   className?: string;
   fullWidth?: boolean;
@@ -28,7 +29,7 @@ export const AddToCartButton = ({ product, className = '', fullWidth = false }: 
         addItem(product);
         showToast(`${product.name} added to cart!`, 'success');
       }}
-      className={`py-3.5 px-6 rounded-none bg-transparent overflow-hidden relative group border border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white font-medium tracking-[0.15em] text-xs uppercase flex items-center justify-center transition-all duration-300 cursor-pointer ${fullWidth ? 'w-full' : ''} ${className}`}
+      className={`relative flex items-center justify-center overflow-hidden rounded-full border border-slate-900 bg-transparent px-6 py-3.5 text-xs font-medium uppercase tracking-[0.15em] text-slate-900 transition-all duration-300 hover:bg-slate-900 hover:text-white cursor-pointer ${fullWidth ? 'w-full' : ''} ${className}`}
     >
       <span className="relative z-10 font-bold">ADD TO CART</span>
     </button>

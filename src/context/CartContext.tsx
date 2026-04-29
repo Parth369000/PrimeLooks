@@ -9,6 +9,7 @@ export interface CartItem {
   actualPrice: number;
   quantity: number;
   categoryName?: string;
+  thumbnailUrl?: string;
 }
 
 interface CartContextType {

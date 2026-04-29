@@ -23,6 +23,10 @@
 # misc
 .DS_Store
 *.pem
+.buildcheck/
+.codex/
+tsc_errors.txt
+CLAUDE.md
 
 # debug
 npm-debug.log*

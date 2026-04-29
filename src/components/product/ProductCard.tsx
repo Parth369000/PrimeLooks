@@ -14,7 +14,15 @@ interface ProductProps {
   className?: string;
 }
 
-export const ProductCard = ({ id, name, actualPrice, sellingPrice, categoryName, thumbnailUrl, className = '' }: ProductProps) => {
+export const ProductCard = ({
+  id,
+  name,
+  actualPrice,
+  sellingPrice,
+  categoryName,
+  thumbnailUrl,
+  className = '',
+}: ProductProps) => {
   const discount = Math.round(((actualPrice - sellingPrice) / actualPrice) * 100);
 
   return (
